@@ -3,6 +3,12 @@ from bs4 import BeautifulSoup
 import math
 import re
 
+range = 1500
+postcode = "rg315nr"
+berths = 6
+max_price = 25000
+keywords = "bunk"
+
 
 def get_number_of_results(soup):
     result_count_h1 = soup.find("h1", "search-form__count js-results-count")
@@ -29,20 +35,43 @@ def get_search_page(radius, postcode, berth, max_price, keywords, page):
 def get_van_dict(uid, van_soup):
     response = {"uid": uid}
 
+    # get a link for the thumbnail image
     image_fig = van_soup.find("figure", "listing-main-image")
     response['thumbnail'] = image_fig.find("img").attrs.get("src")
 
+    # get a title for the vehicle
     info_container = van_soup.find("div", "information-container")
     title_h2 = info_container.find("h2", "listing-title title-wrap")
     response['title'] = title_h2.find("a").contents[0]
 
+    # get a price
+    price_div = van_soup.find("div", "vehicle-price")
+    price_str = price_div.contents[0]
+    price_str = price_str.replace("£", "")
+    price_str = price_str.replace(",", "")
+    response['price'] = int(price_str)
+
+    # get the town & distance from the location
+    seller_location = van_soup.find("div", "seller-location")
+    seller_town = seller_location.find("span", "seller-town")
+    if seller_town is not None and len(seller_town.contents) > 0:
+        response['town'] = seller_town.contents[0]
+    else:
+        response['town'] = "unknown"
+    for content in seller_location:
+        if " miles away" in content:
+            miles_str = content.replace("\n", "")
+            miles_str = miles_str.replace(" - ", "")
+            miles_str = miles_str.replace(" miles away", "")
+            miles_str = miles_str.replace(" ", "")
+            response['distance'] = int(miles_str)
+
+    # get a bunch of key specs where possible
     key_specs_li = van_soup.find("ul", "listing-key-specs")
     key_specs_list = key_specs_li.findAll("li")
-
     extras = ''
     for spec_li in key_specs_list:
         spec = spec_li.contents[0]
-
         if re.match(r'[1-3][0-9]{3}', spec):
             response['year'] = spec
             # print("spec is a YEAR")
@@ -67,11 +96,7 @@ def get_van_dict(uid, van_soup):
     extras = extras.rstrip(" | ")
     response['extras'] = extras
 
-    if len(extras) > 0:
-        print(f"{extras}")
-
     return response
-    pass
 
 
 vans = []
@@ -79,14 +104,17 @@ page = 1
 num_pages = 1000
 
 while page <= num_pages:
-    soup = get_search_page(1500, "rg315nr", 6, 25000, "bunk", page)
+    soup = get_search_page(range, postcode, berths, max_price, keywords, page)
     num_pages = get_number_of_results(soup)
     results_soup = soup.findAll("li", "search-page__result")
     for van_soup in results_soup:
         uid = van_soup.attrs.get('id')
         if uid is not None:
             van = get_van_dict(uid, van_soup)
-            vans.append(van)
-            # print(f"{van['uid']} {van['title']}")
+            if van['price'] <= max_price:
+                vans.append(van)
+                print(van)
+            else:
+                print(f"trimming out featured van costing {van['price']} {van['thumbnail']}")
 
     page += 1
