@@ -6,6 +6,7 @@ import re
 
 class Scraper:
     def __init__(self):
+        self.base_url = "https://www.autotrader.co.uk"
         super(Scraper, self).__init__()
 
     @staticmethod
@@ -15,9 +16,8 @@ class Scraper:
         result_count_str = result_count_str.replace(" motorhomes found", "")
         return math.ceil(int(result_count_str) / 10)
 
-    @staticmethod
-    def get_search_page(max_distance, postcode, berth, max_price, keywords, page):
-        url = f"https://www.autotrader.co.uk/motorhome-search?" \
+    def get_search_page(self, max_distance, postcode, berth, max_price, keywords, page):
+        url = f"{self.base_url}/motorhome-search?" \
               f"sort=price-asc&" \
               f"radius={max_distance}&" \
               f"postcode={postcode}&" \
@@ -30,13 +30,19 @@ class Scraper:
         soup = BeautifulSoup(c, features="html.parser")
         return soup
 
-    @staticmethod
-    def get_van_dict(uid, van_soup):
+    def get_van_dict(self, uid, van_soup):
         response = {"uid": uid}
 
         # get a link for the thumbnail image
         image_fig = van_soup.find("figure", "listing-main-image")
         response['thumbnail'] = image_fig.find("img").attrs.get("src")
+
+        # get the link
+        link_h2 = van_soup.find("h2", "listing-title title-wrap")
+        link_a = link_h2.find("a")
+        link_str = link_a.attrs['href']
+        link_arr = link_str.split("?")
+        response['link'] = f"{self.base_url}{link_arr[0]}"
 
         # get a title for the vehicle
         info_container = van_soup.find("div", "information-container")
@@ -91,7 +97,7 @@ class Scraper:
                 response['engine'] = spec
                 # print("spec is an ENGINE")
             else:
-                extras += spec + " | "
+                extras = f"{extras}{spec} | "
         extras = extras.rstrip(" | ")
         response['extras'] = extras
 
@@ -111,7 +117,6 @@ class Scraper:
                     van = self.get_van_dict(uid, van_soup)
                     if van['price'] <= max_price:
                         vans.append(van)
-                        print(van)
                     else:
                         print(f"trimming out featured van costing {van['price']} {van['thumbnail']}")
             page += 1
