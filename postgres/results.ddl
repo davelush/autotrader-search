@@ -17,7 +17,10 @@ create table results
   seats        varchar,
   engine       varchar,
   extras       varchar,
-  column_15    integer
+  first_seen   timestamp,
+  last_seen    timestamp,
+  status       varchar,
+  comments     varchar
 );
 
 alter table results
