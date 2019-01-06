@@ -2,6 +2,7 @@ import math
 import requests
 from bs4 import BeautifulSoup
 import re
+from autotrader.vehicle import Vehicle
 
 
 class Scraper:
@@ -30,46 +31,46 @@ class Scraper:
         soup = BeautifulSoup(c, features="html.parser")
         return soup
 
-    def get_van_dict(self, uid, van_soup):
-        response = {"uid": uid}
+    def get_vehicle(self, uid, van_soup):
+        vehicle = Vehicle(uid)
 
         # get a link for the thumbnail image
         image_fig = van_soup.find("figure", "listing-main-image")
-        response['thumbnail'] = image_fig.find("img").attrs.get("src")
+        vehicle.thumbnail = image_fig.find("img").attrs.get("src")
 
         # get the link
         link_h2 = van_soup.find("h2", "listing-title title-wrap")
         link_a = link_h2.find("a")
         link_str = link_a.attrs['href']
         link_arr = link_str.split("?")
-        response['link'] = f"{self.base_url}{link_arr[0]}"
+        vehicle.link = f"{self.base_url}{link_arr[0]}"
 
         # get a title for the vehicle
         info_container = van_soup.find("div", "information-container")
         title_h2 = info_container.find("h2", "listing-title title-wrap")
-        response['title'] = title_h2.find("a").contents[0]
+        vehicle.title = title_h2.find("a").contents[0]
 
         # get a price
         price_div = van_soup.find("div", "vehicle-price")
         price_str = price_div.contents[0]
         price_str = price_str.replace("£", "")
         price_str = price_str.replace(",", "")
-        response['price'] = int(price_str)
+        vehicle.price = int(price_str)
 
         # get the town & distance from the location
         seller_location = van_soup.find("div", "seller-location")
         seller_town = seller_location.find("span", "seller-town")
         if seller_town is not None and len(seller_town.contents) > 0:
-            response['town'] = seller_town.contents[0]
+            vehicle.town = seller_town.contents[0]
         else:
-            response['town'] = "unknown"
+            vehicle.town = "unknown"
         for content in seller_location:
             if " miles away" in content:
                 miles_str = content.replace("\n", "")
                 miles_str = miles_str.replace(" - ", "")
                 miles_str = miles_str.replace(" miles away", "")
                 miles_str = miles_str.replace(" ", "")
-                response['distance'] = int(miles_str)
+                vehicle.distance = int(miles_str)
 
         # get a bunch of key specs where possible
         key_specs_li = van_soup.find("ul", "listing-key-specs")
@@ -78,30 +79,30 @@ class Scraper:
         for spec_li in key_specs_list:
             spec = spec_li.contents[0]
             if re.match(r'[1-3][0-9]{3}', spec):
-                response['year'] = spec
+                vehicle.year = spec
                 # print("spec is a YEAR")
             elif " berth" in spec:
-                response['berth'] = spec.replace(" berth", "")
+                vehicle.berth = int(spec.replace(" berth", ""))
                 # print("spec is a BERTH")
             elif " miles" in spec:
                 miles = int(spec.replace(" miles", "").replace(",", ""))
-                response['miles'] = miles
+                vehicle.miles = miles
                 # print("spec is a MILEAGE")
             elif "Manual" in spec or "Auto" in spec:
-                response['transmission'] = spec
+                vehicle.transmission = spec
                 # print("spec is a TRANSMISSION")
             elif "belted" in spec:
-                response['seats'] = spec
+                vehicle.seats = spec
                 # print("spec is a SEATS")
             elif re.match(r'[0-9]\.[0-9][L]', spec):
-                response['engine'] = spec
+                vehicle.engine = spec
                 # print("spec is an ENGINE")
             else:
                 extras = f"{extras}{spec} | "
         extras = extras.rstrip(" | ")
-        response['extras'] = extras
+        vehicle.extras = extras
 
-        return response
+        return vehicle
 
     def get_vehicles(self, max_distance, postcode, berths, max_price, keywords):
         num_pages = 1000
@@ -114,10 +115,10 @@ class Scraper:
             for van_soup in results_soup:
                 uid = van_soup.attrs.get('id')
                 if uid is not None:
-                    van = self.get_van_dict(uid, van_soup)
-                    if van['price'] <= max_price:
+                    van = self.get_vehicle(uid, van_soup)
+                    if van.price <= max_price:
                         vans.append(van)
                     else:
-                        print(f"trimming out featured van costing {van['price']} {van['thumbnail']}")
+                        print(f"trimming out featured van costing {van.price} {van.thumbnail}")
             page += 1
         return vans
