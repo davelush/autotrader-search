@@ -119,6 +119,8 @@ class Scraper:
                     if van.price <= max_price:
                         vans.append(van)
                     else:
-                        print(f"trimming out featured van costing {van.price} {van.thumbnail}")
+                        pass
+                        # print(f"trimming out featured van costing {van.price} {van.thumbnail}")
+            print(f"processed page number {page}")
             page += 1
         return vans

@@ -191,3 +191,4 @@ class VehicleRepository:
                 self.update_vehicle(vehicle)
             else:
                 self.create(vehicle)
+        print("completed processing scrape")
