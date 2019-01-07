@@ -8,7 +8,7 @@ def main():
     max_distance = 1500
     postcode = "rg315nr"
     berths = 6
-    max_price = 25000
+    max_price = 27500
     keywords = "bunk"
 
     postgres_host = "localhost"
